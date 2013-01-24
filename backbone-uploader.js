@@ -1,16 +1,43 @@
+// Backbone file uploader
+//
+// example:
+//
+// layout:
+//   <div class="b-uploader"></div>
+//
+//
+// initialize:
+//   var Uploader = require('uploader')
+//   new Uploader({
+//     el: $('.b-uploader'),
+//     url: "/api/upload"
+//   })
+//
+// backend (e.g. RoR):
+//   def create
+//     file = File.create(file: params[:file])
+//     render json: File.as_json
+//   end
+
+
 this.require.define({'uploader': function(exports, require, module) {
   // For drag and drop files uploader interface
   // jquery doesn't have dataTransfer in event obqect by default
   $.event.props.push('dataTransfer')
 
+  // Main view
   var Uploader = Backbone.View.extend({
+    // class name if element is not set directly
     className: 'b-uploader',
 
     initialize: function(options) {
       _(this).bindAll('_onDragEnter', '_onDrop', '_onDragLeave', '_onDragOver', '_onFileAdd')
+      // files collection
       this.files = new Files()
       this.files.url = options.url
       this.render()
+      // define cached element for files container
+      // TODO: enable setting from outside
       this.filesContainer = $('<div>').addClass('files-container').appendTo(this.el)
       this.bindEvents()
     },
@@ -20,6 +47,7 @@ this.require.define({'uploader': function(exports, require, module) {
         .text('Drag files here')
       return this;
     },
+    // add files to collection
     addFiles: function(files) {
       var _this = this
       _(files).each(function(file) {
@@ -49,6 +77,9 @@ this.require.define({'uploader': function(exports, require, module) {
     _onDragLeave: function(e) {
       this.dragArea.removeClass('drag-over')
     },
+    // callback function for add event on
+    // files collection. initialize and render
+    // file view and append it to files container
     _onFileAdd: function(file) {
       var view = new View({model: file})
       this.filesContainer.append(view.render().el)
@@ -60,17 +91,22 @@ this.require.define({'uploader': function(exports, require, module) {
     initialize: function() {
       _(this).bindAll('_onLoad', '_onError', '_onProgress')
     },
+    // send xhr request to the server
     upload: function() {
       var xhr = this.xhr()
       xhr.open('POST', this.url())
       xhr.send(this.data())
     },
+    // initialize formData and specify uploaded file
+    // and rails csrf token
     data: function() {
       var data = new FormData()
       data.append('file', this.get('file'))
       data.append(this._csrfParam, this._csrfToken)
       return data
     },
+    // return instance of XMLHttpRequest and proxy all
+    // events to this model
     xhr: function() {
       var xhr = new XMLHttpRequest()
       xhr.addEventListener('load', this._onLoad)
@@ -109,6 +145,8 @@ this.require.define({'uploader': function(exports, require, module) {
     }
   })
 
+  // template for file view
+  // TODO: make configurable
   var fileTemplate = _.template('<p>Name: <%= name %></p><div class="progress"><div class="bar"></div></div>')
 
   var View = Backbone.View.extend({
@@ -126,6 +164,7 @@ this.require.define({'uploader': function(exports, require, module) {
     bindEvents: function() {
       this.model.on('progress', this._onProgress)
     },
+    // set width of progress bar to current file position
     progress: function(percentage) {
       this.bar.css('width', percentage + '%')
     },
