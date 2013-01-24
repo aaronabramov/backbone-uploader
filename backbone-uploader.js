@@ -7,10 +7,11 @@ this.require.define({'uploader': function(exports, require, module) {
     className: 'b-uploader',
 
     initialize: function(options) {
-      _(this).bindAll('_onDragEnter', '_onDrop', '_onDragLeave', '_onDragOver')
+      _(this).bindAll('_onDragEnter', '_onDrop', '_onDragLeave', '_onDragOver', '_onFileAdd')
       this.files = new Files()
       this.files.url = options.url
       this.render()
+      this.filesContainer = $('<div>').addClass('files-container').appendTo(this.el)
       this.bindEvents()
     },
     render: function() {
@@ -26,12 +27,12 @@ this.require.define({'uploader': function(exports, require, module) {
       })
     },
     bindEvents: function() {
-      var _this = this
       this.dragArea.on('dragenter', this._onDragEnter)
       this.dragArea.on('dragover', this._onDragOver)
       this.dragArea.on('drop', this._onDrop)
       this.dragArea.on('dragleave', this._onDragLeave)
       this.dragArea.on('dragend', this._onDragLeave)
+      this.files.on('add', this._onFileAdd)
     },
     _onDragEnter: function(e) {
       this.dragArea.addClass('drag-over')
@@ -47,6 +48,10 @@ this.require.define({'uploader': function(exports, require, module) {
     },
     _onDragLeave: function(e) {
       this.dragArea.removeClass('drag-over')
+    },
+    _onFileAdd: function(file) {
+      var view = new View({model: file})
+      this.filesContainer.append(view.render().el)
     }
   })
 
@@ -100,11 +105,36 @@ this.require.define({'uploader': function(exports, require, module) {
       this.on('add', this._add)
     },
     _add: function(file) {
-      console.log(file)
       file.upload()
     }
   })
 
+  var fileTemplate = _.template('<p>Name: <%= name %></p><div class="progress"><div class="bar"></div></div>')
+
+  var View = Backbone.View.extend({
+    template: fileTemplate,
+
+    initialize: function() {
+      _(this).bindAll('_onProgress')
+      this.bindEvents()
+    },
+    render: function() {
+      this.$el.html(this.template(this.model.toJSON()))
+      this.bar = this.$('.bar')
+      return this
+    },
+    bindEvents: function() {
+      this.model.on('progress', this._onProgress)
+    },
+    progress: function(percentage) {
+      this.bar.css('width', percentage + '%')
+    },
+    _onProgress: function(e) {
+      var total = e.totalSize || e.total,
+      loaded = e.position || e.loaded
+      this.progress(100 * (loaded / total))
+    },
+  })
+
   module.exports = Uploader
 }})
-
